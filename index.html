@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Global Flag War - Background Fix</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            font-family: sans-serif; 
+            
+            /* --- BACKGROUND IMAGE HERE --- */
+            /* Spread the image across the entire screen */
+            background-image: url('1000089553.jpg');
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-attachment: fixed;
+            background-size: cover;
+            
+            /* If the image doesn't load, light blue color */
+            background-color: #bfdbfe; 
+        }
+
+        #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        #counter { position: absolute; top: 15px; left: 15px; font-size: 18px; font-weight: 900; color: #22d3ee; text-shadow: 2px 2px 4px #000; }
+        
+        #winner-box {
+            display: none; position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+            background: #fff; padding: 25px; border-radius: 20px; border: 6px solid #fbbf24;
+            text-align: center; box-shadow: 0 0 50px #22d3ee; z-index: 100; pointer-events: auto;
+            width: 70%; max-width: 260px;
+        }
+        #winner-flag { width: 110px; height: 75px; border: 2px solid #333; margin: 15px 0; }
+        #winner-name { font-size: 24px; font-weight: 900; color: #0f172a; display: block; }
+        
+        #btn-container {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            display: flex; align-items: center; gap: 15px; pointer-events: auto;
+        }
+
+        #start-btn {
+            font-size: 26px; padding: 15px 50px; background: #22d3ee; color: #020617;
+            border: none; border-radius: 50px; cursor: pointer; font-weight: bold;
+            box-shadow: 0 0 20px #22d3ee;
+        }
+
+        #mute-btn {
+            font-size: 26px; width: 60px; height: 60px; background: #334155; color: white;
+            border: none; border-radius: 50%; cursor: pointer; display: flex; 
+            align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+
+        .retry { margin-top: 15px; padding: 10px 20px; background: #333; color: white; border: none; border-radius: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<audio id="bgMusic" preload="auto"></audio>
+
+<div id="ui">
+    <div id="counter">Countries: 0</div>
+    <div id="winner-box">
+        <h2 style="margin:0">WINNER!</h2>
+        <img id="winner-flag" src="">
+        <span id="winner-name"></span>
+        <button class="retry" onclick="restartGame()">PLAY AGAIN</button>
+    </div>
+</div>
+
+<div id="btn-container">
+    <button id="start-btn" onclick="startGame()">START</button>
+    <button id="mute-btn" onclick="toggleMute()">🔊</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+
+<script>
+    const { Engine, Render, Runner, Bodies, Composite, Events, Body, Vector } = Matter;
+
+    const bgMusic = document.getElementById("bgMusic");
+    let musicStarted = false;
+    let isMuted = false;
+
+    const playlist = [
+        "15-yanvar 2026.mp3",
+        "Untitled (1).mp3",
+        "qorls.mp3",
+        "Untitled.mp3"
+    ];
+
+    function playRandomTrack() {
+        let currentTrackIndex = Math.floor(Math.random() * playlist.length);
+        bgMusic.src = playlist[currentTrackIndex];
+        bgMusic.play().catch(e => console.log("Music playback error:", e));
+    }
+
+    function toggleMute() {
+        isMuted = !isMuted;
+        bgMusic.muted = isMuted;
+        document.getElementById('mute-btn').innerText = isMuted ? "🔇" : "🔊";
+    }
+
+    bgMusic.addEventListener('ended', function() {
+        playRandomTrack();
+    });
+
+    document.addEventListener("visibilitychange", function() {
+        if (document.hidden) {
+            bgMusic.pause();
+        } else {
+            if (musicStarted) {
+                bgMusic.play().catch(e => console.log("Auto-play error"));
+            }
+        }
+    });
+
+    const CONFIG = {
+        ringRadius: 145,       
+        ballSize: 8,           
+        targetSpeed: 2.8,      
+        rotationSpeed: 0.009,  
+        gravityValue: 0.8      
+    };
+
+    const countries = [
+        {name:"Uzbekistan",code:"uz"},{name:"USA",code:"us"},{name:"Russia",code:"ru"},{name:"China",code:"cn"},
+        {name:"Turkey",code:"tr"},{name:"Germany",code:"de"},{name:"Japan",code:"jp"},{name:"France",code:"fr"},
+        {name:"Korea",code:"kr"},{name:"India",code:"in"},{name:"England",code:"gb"},{name:"Brazil",code:"br"},
+        {name:"Kazakhstan",code:"kz"},{name:"Kyrgyzstan",code:"kg"},{name:"Tajikistan",code:"tj"},{name:"Turkmenistan",code:"tm"},
+        {name:"Azerbaijan",code:"az"},{name:"Afghanistan",code:"af"},{name:"Iran",code:"ir"},{name:"Pakistan",code:"pk"},
+        {name:"Saudi Arabia",code:"sa"},{name:"UAE",code:"ae"},{name:"Egypt",code:"eg"},{name:"Spain",code:"es"},
+        {name:"Italy",code:"it"},{name:"Portugal",code:"pt"},{name:"Argentina",code:"ar"},{name:"Canada",code:"ca"},
+        {name:"Mexico",code:"mx"},{name:"Australia",code:"au"},{name:"Ukraine",code:"ua"},{name:"Poland",code:"pl"},
+        {name:"Netherlands",code:"nl"},{name:"Sweden",code:"se"},{name:"Norway",code:"no"},{name:"Switzerland",code:"ch"},
+        {name:"Belgium",code:"be"},{name:"Austria",code:"at"},{name:"Greece",code:"gr"},{name:"Armenia",code:"am"},
+        {name:"Georgia",code:"ge"},{name:"Iraq",code:"iq"},{name:"Israel",code:"il"},{name:"Indonesia",code:"id"},
+        {name:"Malaysia",code:"my"},{name:"Thailand",code:"th"},{name:"Vietnam",code:"vn"},{name:"Philippines",code:"ph"},
+        {name:"South Africa",code:"za"},{name:"Nigeria",code:"ng"},{name:"Morocco",code:"ma"},{name:"Algeria",code:"dz"},
+        {name:"Chile",code:"cl"},{name:"Colombia",code:"co"},{name:"Peru",code:"pe"},{name:"Uruguay",code:"uy"},
+        {name:"Hungary",code:"hu"},{name:"Czech Republic",code:"cz"},{name:"Romania",code:"ro"},{name:"Bulgaria",code:"bg"},
+        {name:"Croatia",code:"hr"},{name:"Serbia",code:"rs"},{name:"Slovakia",code:"sk"},{name:"Finland",code:"fi"},
+        {name:"Denmark",code:"dk"},{name:"Ireland",code:"ie"},{name:"New Zealand",code:"nz"},{name:"Singapore",code:"sg"},
+        {name:"Qatar",code:"qa"},{name:"Kuwait",code:"kw"},{name:"Oman",code:"om"},{name:"Jordan",code:"jo"},
+        {name:"Lebanon",code:"lb"},{name:"Syria",code:"sy"},{name:"Palestine",code:"ps"},{name:"Yemen",code:"ye"},
+        {name:"Libya",code:"ly"},{name:"Tunisia",code:"tn"},{name:"Ethiopia",code:"et"},{name:"Kenya",code:"ke"},
+        {name:"Ghana",code:"gh"},{name:"Cuba",code:"cu"},{name:"Jamaica",code:"jm"},{name:"Iceland",code:"is"},
+        {name:"Mongolia",code:"mn"},{name:"Nepal",code:"np"},{name:"Sri Lanka",code:"lk"},{name:"Bangladesh",code:"bd"}
+    ];
+
+    let engine = null;
+    let render = null;
+    let runner = null;
+    let wheel = null;
+    let balls = [];
+    let isPlaying = false;
+
+    function startGame() {
+        musicStarted = true;
+        bgMusic.volume = 0.8;
+        playRandomTrack();
+
+        document.getElementById('btn-container').style.display = 'none';
+        init();
+        isPlaying = true;
+    }
+
+    function restartGame() {
+        document.getElementById('winner-box').style.display = 'none';
+
+        isPlaying = false;
+        
+        if (runner) {
+            Runner.stop(runner);
+            runner = null;
+        }
+
+        if (render) {
+            Render.stop(render);
+            if (render.canvas) render.canvas.remove();
+            render = null;
+        }
+
+        if (engine) {
+            Engine.clear(engine);
+            engine = null;
+        }
+
+        balls = []; 
+        
+        init();
+        isPlaying = true;
+        playRandomTrack();
+    }
+
+    function init() {
+        engine = Engine.create();
+        engine.gravity.y = CONFIG.gravityValue;
+
+        // --- IMPORTANT PART: Make Matter.js background transparent ---
+        render = Render.create({
+            element: document.body,
+            engine: engine,
+            options: { 
+                width: window.innerWidth, 
+                height: window.innerHeight, 
+                wireframes: false, 
+                background: 'transparent' // Here the background is made transparent
+            }
+        });
+
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2 - 50;
+
+        const floor = Bodies.rectangle(cx, window.innerHeight - 10, window.innerWidth, 20, { isStatic: true, render: { fillStyle: '#1e293b' } });
+        Composite.add(engine.world, [floor]);
+
+        wheel = Composite.create();
+        const segments = 65; 
+        const gapSize = 9;
+        for (let i = 0; i < segments - gapSize; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            const wall = Bodies.rectangle(
+                cx + Math.cos(angle) * CONFIG.ringRadius,
+                cy + Math.sin(angle) * CONFIG.ringRadius,
+                25, 4, {
+                    isStatic: true,
+                    angle: angle + Math.PI / 2,
+                    render: { fillStyle: '#22d3ee' },
+                    restitution: 1
+                }
+            );
+            Composite.add(wheel, wall);
+        }
+        Composite.add(engine.world, wheel);
+
+        countries.forEach(c => {
+            const ball = Bodies.circle(cx + (Math.random()-0.5)*150, cy + (Math.random()-0.5)*150, CONFIG.ballSize, {
+                restitution: 1, friction: 0.1, frictionAir: 0, inertia: Infinity,
+                render: {
+                    sprite: {
+                        texture: `https://flagcdn.com/w80/${c.code}.png`,
+                        xScale: (CONFIG.ballSize * 2.3) / 80,
+                        yScale: (CONFIG.ballSize * 2.3) / 60
+                    }
+                },
+                label: c.name
+            });
+            ball.countryCode = c.code;
+            ball.isActive = true;
+            const angle = Math.random() * Math.PI * 2;
+            Body.setVelocity(ball, { x: Math.cos(angle) * CONFIG.targetSpeed, y: Math.sin(angle) * CONFIG.targetSpeed });
+            balls.push(ball);
+        });
+        Composite.add(engine.world, balls);
+
+        Events.on(engine, 'beforeUpdate', () => {
+            if (!isPlaying) return;
+
+            Composite.rotate(wheel, CONFIG.rotationSpeed, { x: cx, y: cy });
+
+            balls.forEach(ball => {
+                if (ball.isActive) {
+                    Body.applyForce(ball, ball.position, { x: 0, y: -engine.gravity.y * engine.gravity.scale * ball.mass });
+                    const vel = ball.velocity;
+                    const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+                    if (speed !== 0) {
+                        Body.setVelocity(ball, { x: (vel.x / speed) * CONFIG.targetSpeed, y: (vel.y / speed) * CONFIG.targetSpeed });
+                    }
+
+                    const dist = Vector.magnitude(Vector.sub(ball.position, {x: cx, y: cy}));
+                    if (dist > CONFIG.ringRadius + 15) {
+                        ball.isActive = false;
+                        ball.frictionAir = 0.02;
+                    }
+                }
+            });
+
+            const aliveCount = balls.filter(b => b.isActive).length;
+            document.getElementById('counter').innerText = "Alive: " + aliveCount;
+
+            if (aliveCount === 1 && isPlaying) {
+                const winner = balls.find(b => b.isActive);
+                if (winner) showWinner(winner);
+            }
+        });
+
+        Render.run(render);
+        runner = Runner.create();
+        Runner.run(runner, engine);
+    }
+
+    function showWinner(b) {
+        isPlaying = false;
+        document.getElementById('winner-box').style.display = 'block';
+        document.getElementById('winner-name').innerText = b.label;
+        document.getElementById('winner-flag').src = `https://flagcdn.com/w160/${b.countryCode}.png`;
+    }
+</script>
+</body>
+</html>
