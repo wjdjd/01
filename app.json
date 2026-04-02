@@ -1,0 +1,9 @@
+{
+  "expo": {
+    "name": "Twit Browser",
+    "slug": "twit-browser",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark"
+  }
+}
